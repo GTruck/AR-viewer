@@ -62,9 +62,9 @@
       padding: 0.5em 1em;
       position: absolute;
       transform: translate(-50%, -50%);
-      pointer-events: none; /* Para no interferir al girar el modelo */
+      pointer-events: none;
       z-index: 10;
-      opacity: 0; /* Ocultas hasta que se calculen */
+      opacity: 0;
       transition: opacity 0.3s ease-in;
     }
 
@@ -92,25 +92,24 @@
       stroke-width: 2;
       stroke-dasharray: 4;
     }
-    #linea-x { stroke: #ff0000; } /* Rojo para X */
-    #linea-y { stroke: #00ff00; } /* Verde para Y */
-    #linea-z { stroke: #0000ff; } /* Azul para Z */
+    #linea-x { stroke: #ff0000; } 
+    #linea-y { stroke: #00ff00; } 
+    #linea-z { stroke: #0000ff; } 
   </style>
 </head>
 <body>
 
-  <!-- Nuevo contenedor relativo que agrupa el modelo y la UI superpuesta -->
   <div id="contenedor-ar">
     
     <!-- 
-      ar-scale="fixed" fuerza el tamaño real.
-      Sustituye "tu_modelo.glb" por el nombre de tu archivo.
+      Se eliminó ar-scale="fixed" para permitir escalar libremente.
+      Se agregó ios-src para compatibilidad con iPhone/iPad.
     -->
     <model-viewer id="visor-3d" 
                   src="tu_modelo.glb" 
+                  ios-src="tu_modelo.usdz"
                   ar 
                   ar-modes="webxr scene-viewer quick-look" 
-                  ar-scale="fixed" 
                   camera-controls 
                   shadow-intensity="1"
                   alt="Modelo 3D interactivo">
@@ -119,19 +118,16 @@
         Ver en tu espacio (AR)
       </button>
 
-      <!-- Puntos de anclaje para los ejes -->
       <button slot="hotspot-origen" class="punto-anclaje" data-position="0 0 0"></button>
       <button slot="hotspot-x" class="punto-anclaje" data-position="0 0 0"></button>
       <button slot="hotspot-y" class="punto-anclaje" data-position="0 0 0"></button>
       <button slot="hotspot-z" class="punto-anclaje" data-position="0 0 0"></button>
     </model-viewer>
 
-    <!-- Etiquetas visuales MOVIDAS fuera de la etiqueta <model-viewer> -->
     <div id="etiqueta-x" class="medida-label"></div>
     <div id="etiqueta-y" class="medida-label"></div>
     <div id="etiqueta-z" class="medida-label"></div>
 
-    <!-- Líneas dibujadas en SVG MOVIDAS fuera de la etiqueta <model-viewer> -->
     <svg id="lineas-ejes">
       <line id="linea-x" class="linea-eje"></line>
       <line id="linea-y" class="linea-eje"></line>
@@ -143,7 +139,6 @@
   <script>
     const viewer = document.querySelector('#visor-3d');
     
-    // Elementos del DOM
     const anclajeOrigen = viewer.querySelector('[slot="hotspot-origen"]');
     const anclajeX = viewer.querySelector('[slot="hotspot-x"]');
     const anclajeY = viewer.querySelector('[slot="hotspot-y"]');
@@ -157,54 +152,42 @@
     const lineaY = document.querySelector('#linea-y');
     const lineaZ = document.querySelector('#linea-z');
 
-    // Cuando el modelo termine de cargar
     viewer.addEventListener('load', () => {
-      
-      // Función interna para asegurar que las geometrías están listas
       const initMedidas = () => {
         const medidas = viewer.getDimensions();
         const centro = viewer.getBoundingBoxCenter();
 
-        // Validar si el engine 3D aún está calculando
         if(medidas.x === 0 && medidas.y === 0 && medidas.z === 0) {
           setTimeout(initMedidas, 100);
           return;
         }
 
-        // Convertimos a milímetros para mayor precisión 
         etiquetaX.textContent = `X: ${(medidas.x * 1000).toFixed(1)} mm`;
         etiquetaY.textContent = `Y: ${(medidas.y * 1000).toFixed(1)} mm`;
         etiquetaZ.textContent = `Z: ${(medidas.z * 1000).toFixed(1)} mm`;
 
-        // Mostrar las etiquetas progresivamente
         etiquetaX.style.opacity = 1;
         etiquetaY.style.opacity = 1;
         etiquetaZ.style.opacity = 1;
 
-        // Posicionamos los puntos de anclaje en las esquinas del modelo
         const origX = centro.x - (medidas.x / 2);
         const origY = centro.y - (medidas.y / 2);
         const origZ = centro.z - (medidas.z / 2);
 
-        // setAttribute es fundamental para que el WebComponent intercepte el cambio
         anclajeOrigen.setAttribute('data-position', `${origX} ${origY} ${origZ}`);
         anclajeX.setAttribute('data-position', `${origX + medidas.x} ${origY} ${origZ}`);
         anclajeY.setAttribute('data-position', `${origX} ${origY + medidas.y} ${origZ}`);
         anclajeZ.setAttribute('data-position', `${origX} ${origY} ${origZ + medidas.z}`);
         
-        // Disparamos la renderización del SVG con los nuevos anclajes
         setTimeout(actualizarLineas, 50);
       };
 
       initMedidas();
     });
 
-    // Función para actualizar las líneas SVG mientras el modelo gira
     const actualizarLineas = () => {
-      // Ignorar si el modelo no está cargado completamente aún
       if(etiquetaX.style.opacity == 0) return;
 
-      // Obtenemos las coordenadas 2D en pantalla de los puntos 3D
       const rectOrigen = anclajeOrigen.getBoundingClientRect();
       const rectX = anclajeX.getBoundingClientRect();
       const rectY = anclajeY.getBoundingClientRect();
@@ -212,7 +195,6 @@
       
       const visorRect = viewer.getBoundingClientRect();
 
-      // Función auxiliar para sacar el centro del anclaje relativo al visor
       const getCentro = (rect) => ({
         x: rect.left - visorRect.left + (rect.width / 2),
         y: rect.top - visorRect.top + (rect.height / 2)
@@ -223,9 +205,7 @@
       const pY = getCentro(rectY);
       const pZ = getCentro(rectZ);
 
-      // Usar requestAnimationFrame para optimizar el dibujado al rotar (evita lag)
       requestAnimationFrame(() => {
-        // Dibujamos la línea X
         lineaX.setAttribute('x1', pOrigen.x);
         lineaX.setAttribute('y1', pOrigen.y);
         lineaX.setAttribute('x2', pX.x);
@@ -233,7 +213,6 @@
         etiquetaX.style.left = `${(pOrigen.x + pX.x) / 2}px`;
         etiquetaX.style.top = `${(pOrigen.y + pX.y) / 2}px`;
 
-        // Dibujamos la línea Y
         lineaY.setAttribute('x1', pOrigen.x);
         lineaY.setAttribute('y1', pOrigen.y);
         lineaY.setAttribute('x2', pY.x);
@@ -241,7 +220,6 @@
         etiquetaY.style.left = `${(pOrigen.x + pY.x) / 2}px`;
         etiquetaY.style.top = `${(pOrigen.y + pY.y) / 2}px`;
 
-        // Dibujamos la línea Z
         lineaZ.setAttribute('x1', pOrigen.x);
         lineaZ.setAttribute('y1', pOrigen.y);
         lineaZ.setAttribute('x2', pZ.x);
@@ -251,7 +229,6 @@
       });
     };
 
-    // Actualizamos las líneas cada vez que se mueva la cámara o se ajuste la ventana
     viewer.addEventListener('camera-change', actualizarLineas);
     window.addEventListener('resize', actualizarLineas);
   </script>
