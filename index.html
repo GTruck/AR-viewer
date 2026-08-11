@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Visor AR con Medidas Exactas</title>
+  <title>Visor AR - Medidas Reales</title>
   
-  <!-- Importamos la librería de model-viewer -->
+  <!-- Importamos la librería de model-viewer (Versión estable más reciente) -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
   
   <style>
@@ -14,12 +14,11 @@
       padding: 0;
       width: 100vw;
       height: 100vh;
-      background-color: #f0f0f0;
-      font-family: Arial, sans-serif;
+      background-color: #e5e5e5;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       overflow: hidden;
     }
 
-    /* Contenedor principal para posicionar elementos superpuestos */
     #contenedor-ar {
       position: relative;
       width: 100%;
@@ -29,46 +28,53 @@
     model-viewer {
       width: 100%;
       height: 100%;
-      /* Ocultamos el botón por defecto para usar uno personalizado */
+      /* Ocultamos el botón por defecto para evitar conflictos en Android */
       --ar-button-display: none; 
     }
 
-    /* Estilos para el botón de Realidad Aumentada */
+    /* Botón flotante profesional */
     #ar-button {
       position: absolute;
-      bottom: 24px;
+      bottom: 30px;
       left: 50%;
       transform: translateX(-50%);
-      background-color: white;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-      padding: 12px 24px;
+      background-color: #212121;
+      color: white;
+      border-radius: 30px;
+      border: none;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+      padding: 14px 28px;
       font-size: 16px;
       font-weight: bold;
       cursor: pointer;
       z-index: 1000;
+      transition: background-color 0.3s;
     }
 
-    /* Estilos para las etiquetas de medidas */
+    #ar-button:active {
+      background-color: #424242;
+    }
+
+    /* Estilos para las etiquetas flotantes de medidas (en mm) */
     .medida-label {
-      background: rgba(255, 255, 255, 0.9);
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-      color: #333;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+      color: #111;
       display: block;
-      font-size: 14px;
-      font-weight: bold;
-      padding: 0.5em 1em;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 6px 10px;
       position: absolute;
       transform: translate(-50%, -50%);
       pointer-events: none;
       z-index: 10;
       opacity: 0;
-      transition: opacity 0.3s ease-in;
+      transition: opacity 0.4s ease-in-out;
+      border: 1px solid rgba(0,0,0,0.1);
     }
 
-    /* Puntos de anclaje invisibles en el model-viewer */
+    /* Puntos invisibles para calcular las posiciones 3D en pantalla */
     .punto-anclaje {
       display: block;
       width: 1px;
@@ -77,7 +83,7 @@
       pointer-events: none;
     }
 
-    /* Contenedor SVG para las líneas de los ejes */
+    /* Capa para dibujar las líneas vectoriales */
     #lineas-ejes {
       position: absolute;
       top: 0;
@@ -89,12 +95,15 @@
     }
 
     .linea-eje {
-      stroke-width: 2;
-      stroke-dasharray: 4;
+      stroke-width: 2.5;
+      stroke-dasharray: 5, 5;
+      opacity: 0.8;
     }
-    #linea-x { stroke: #ff0000; } 
-    #linea-y { stroke: #00ff00; } 
-    #linea-z { stroke: #0000ff; } 
+    
+    /* Colores clásicos de software 3D para rápida identificación */
+    #linea-x { stroke: #ff3333; } /* X: Ancho (Rojo) */
+    #linea-y { stroke: #33cc33; } /* Y: Alto (Verde) */
+    #linea-z { stroke: #3366ff; } /* Z: Profundidad (Azul) */
   </style>
 </head>
 <body>
@@ -102,32 +111,40 @@
   <div id="contenedor-ar">
     
     <!-- 
-      Se eliminó ar-scale="fixed" para permitir escalar libremente.
-      Se agregó ios-src para compatibilidad con iPhone/iPad.
+      CONFIGURACIÓN CLAVE:
+      1. ar-modes="scene-viewer webxr quick-look" -> Obliga a Android a usar la app nativa de cámara, evitando bloqueos.
+      2. camera-orbit="45deg 55deg auto" -> Inicia el modelo en diagonal para que el eje Z (profundidad) no quede oculto.
+      3. ios-src -> Listo para cuando conviertas el archivo a .usdz para usuarios de Apple.
     -->
     <model-viewer id="visor-3d" 
                   src="tu_modelo.glb" 
                   ios-src="tu_modelo.usdz"
                   ar 
-                  ar-modes="webxr scene-viewer quick-look" 
+                  ar-modes="scene-viewer webxr quick-look" 
                   camera-controls 
-                  shadow-intensity="1"
-                  alt="Modelo 3D interactivo">
+                  camera-orbit="45deg 55deg auto"
+                  shadow-intensity="1.5"
+                  exposure="1"
+                  alt="Modelo 3D Interactivo">
       
+      <!-- Botón de AR personalizado -->
       <button slot="ar-button" id="ar-button">
-        Ver en tu espacio (AR)
+        📍 Ver en mi espacio (AR)
       </button>
 
+      <!-- Anclajes atados a la geometría del modelo -->
       <button slot="hotspot-origen" class="punto-anclaje" data-position="0 0 0"></button>
       <button slot="hotspot-x" class="punto-anclaje" data-position="0 0 0"></button>
       <button slot="hotspot-y" class="punto-anclaje" data-position="0 0 0"></button>
       <button slot="hotspot-z" class="punto-anclaje" data-position="0 0 0"></button>
     </model-viewer>
 
+    <!-- Textos de las cotas -->
     <div id="etiqueta-x" class="medida-label"></div>
     <div id="etiqueta-y" class="medida-label"></div>
     <div id="etiqueta-z" class="medida-label"></div>
 
+    <!-- Líneas de cotas -->
     <svg id="lineas-ejes">
       <line id="linea-x" class="linea-eje"></line>
       <line id="linea-y" class="linea-eje"></line>
@@ -152,49 +169,62 @@
     const lineaY = document.querySelector('#linea-y');
     const lineaZ = document.querySelector('#linea-z');
 
+    let modeloCargado = false;
+
+    // Se ejecuta en cuanto el archivo 3D termina de descargar y procesarse
     viewer.addEventListener('load', () => {
+      
       const initMedidas = () => {
         const medidas = viewer.getDimensions();
         const centro = viewer.getBoundingBoxCenter();
 
-        if(medidas.x === 0 && medidas.y === 0 && medidas.z === 0) {
-          setTimeout(initMedidas, 100);
+        // Validamos si el motor de renderizado ya calculó el volumen real del objeto
+        if (medidas.x === 0 && medidas.y === 0 && medidas.z === 0) {
+          setTimeout(initMedidas, 150); // Reintenta si aún está en 0
           return;
         }
 
-        etiquetaX.textContent = `X: ${(medidas.x * 1000).toFixed(1)} mm`;
-        etiquetaY.textContent = `Y: ${(medidas.y * 1000).toFixed(1)} mm`;
-        etiquetaZ.textContent = `Z: ${(medidas.z * 1000).toFixed(1)} mm`;
+        modeloCargado = true;
 
-        etiquetaX.style.opacity = 1;
-        etiquetaY.style.opacity = 1;
-        etiquetaZ.style.opacity = 1;
+        // Se multiplican los metros por 1000 para trabajar en milímetros exactos
+        etiquetaX.textContent = `Ancho: ${(medidas.x * 1000).toFixed(1)} mm`;
+        etiquetaY.textContent = `Alto: ${(medidas.y * 1000).toFixed(1)} mm`;
+        etiquetaZ.textContent = `Prof.: ${(medidas.z * 1000).toFixed(1)} mm`;
 
+        // Posicionamiento de las esquinas basado en la caja delimitadora (Bounding Box)
         const origX = centro.x - (medidas.x / 2);
         const origY = centro.y - (medidas.y / 2);
         const origZ = centro.z - (medidas.z / 2);
 
+        // Fijamos los puntos en el espacio 3D
         anclajeOrigen.setAttribute('data-position', `${origX} ${origY} ${origZ}`);
         anclajeX.setAttribute('data-position', `${origX + medidas.x} ${origY} ${origZ}`);
         anclajeY.setAttribute('data-position', `${origX} ${origY + medidas.y} ${origZ}`);
         anclajeZ.setAttribute('data-position', `${origX} ${origY} ${origZ + medidas.z}`);
         
-        setTimeout(actualizarLineas, 50);
+        // Hacemos visibles las etiquetas suavemente
+        etiquetaX.style.opacity = 1;
+        etiquetaY.style.opacity = 1;
+        etiquetaZ.style.opacity = 1;
+
+        // Renderizamos las líneas por primera vez
+        setTimeout(actualizarLineas, 100);
       };
 
       initMedidas();
     });
 
+    // Esta función traduce las coordenadas 3D a coordenadas 2D en tu pantalla
     const actualizarLineas = () => {
-      if(etiquetaX.style.opacity == 0) return;
+      if (!modeloCargado) return;
 
       const rectOrigen = anclajeOrigen.getBoundingClientRect();
       const rectX = anclajeX.getBoundingClientRect();
       const rectY = anclajeY.getBoundingClientRect();
       const rectZ = anclajeZ.getBoundingClientRect();
-      
       const visorRect = viewer.getBoundingClientRect();
 
+      // Calcula el centro exacto del elemento en relación a la pantalla
       const getCentro = (rect) => ({
         x: rect.left - visorRect.left + (rect.width / 2),
         y: rect.top - visorRect.top + (rect.height / 2)
@@ -205,7 +235,9 @@
       const pY = getCentro(rectY);
       const pZ = getCentro(rectZ);
 
+      // Usamos requestAnimationFrame para que las líneas sigan al modelo a 60fps sin tirones
       requestAnimationFrame(() => {
+        // Eje X
         lineaX.setAttribute('x1', pOrigen.x);
         lineaX.setAttribute('y1', pOrigen.y);
         lineaX.setAttribute('x2', pX.x);
@@ -213,6 +245,7 @@
         etiquetaX.style.left = `${(pOrigen.x + pX.x) / 2}px`;
         etiquetaX.style.top = `${(pOrigen.y + pX.y) / 2}px`;
 
+        // Eje Y
         lineaY.setAttribute('x1', pOrigen.x);
         lineaY.setAttribute('y1', pOrigen.y);
         lineaY.setAttribute('x2', pY.x);
@@ -220,6 +253,7 @@
         etiquetaY.style.left = `${(pOrigen.x + pY.x) / 2}px`;
         etiquetaY.style.top = `${(pOrigen.y + pY.y) / 2}px`;
 
+        // Eje Z
         lineaZ.setAttribute('x1', pOrigen.x);
         lineaZ.setAttribute('y1', pOrigen.y);
         lineaZ.setAttribute('x2', pZ.x);
@@ -229,6 +263,7 @@
       });
     };
 
+    // Repintar las líneas cada vez que el cliente gira el modelo o cambia el tamaño de la ventana
     viewer.addEventListener('camera-change', actualizarLineas);
     window.addEventListener('resize', actualizarLineas);
   </script>
