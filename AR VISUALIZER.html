@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visor AR con Medidas Exactas</title>
+  
+  <!-- Importamos la librería de model-viewer -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #f0f0f0;
+      font-family: Arial, sans-serif;
+    }
+    
+    model-viewer {
+      width: 100%;
+      height: 100%;
+      /* Ocultamos el botón por defecto para usar uno personalizado */
+      --ar-button-display: none; 
+    }
+
+    /* Estilos para el botón de Realidad Aumentada */
+    #ar-button {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: white;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    /* Estilos para las etiquetas de medidas */
+    .medida-label {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+      color: #333;
+      display: block;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 0.5em 1em;
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none; /* Para no interferir al girar el modelo */
+    }
+
+    /* Puntos de anclaje invisibles */
+    .punto-anclaje {
+      display: block;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    /* Contenedor SVG para las líneas de los ejes */
+    #lineas-ejes {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .linea-eje {
+      stroke-width: 2;
+      stroke-dasharray: 4;
+    }
+    #linea-x { stroke: #ff0000; } /* Rojo para X */
+    #linea-y { stroke: #00ff00; } /* Verde para Y */
+    #linea-z { stroke: #0000ff; } /* Azul para Z */
+  </style>
+</head>
+<body>
+
+  <!-- 
+    ar-scale="fixed" fuerza el tamaño real.
+    Sustituye "tu_modelo.glb" por el nombre de tu archivo.
+  -->
+  <model-viewer id="visor-3d" 
+                src="tu_modelo.glb" 
+                ar 
+                ar-modes="webxr scene-viewer quick-look" 
+                ar-scale="fixed" 
+                camera-controls 
+                shadow-intensity="1"
+                alt="Modelo 3D interactivo">
+    
+    <button slot="ar-button" id="ar-button">
+      Ver en tu espacio (AR)
+    </button>
+
+    <!-- Puntos de anclaje para los ejes (se posicionarán con Javascript) -->
+    <button slot="hotspot-origen" class="punto-anclaje" data-position="0 0 0"></button>
+    <button slot="hotspot-x" class="punto-anclaje" data-position="0 0 0"></button>
+    <button slot="hotspot-y" class="punto-anclaje" data-position="0 0 0"></button>
+    <button slot="hotspot-z" class="punto-anclaje" data-position="0 0 0"></button>
+
+    <!-- Etiquetas visuales -->
+    <div id="etiqueta-x" class="medida-label"></div>
+    <div id="etiqueta-y" class="medida-label"></div>
+    <div id="etiqueta-z" class="medida-label"></div>
+
+    <!-- Líneas dibujadas en SVG sobre el modelo -->
+    <svg id="lineas-ejes">
+      <line id="linea-x" class="linea-eje"></line>
+      <line id="linea-y" class="linea-eje"></line>
+      <line id="linea-z" class="linea-eje"></line>
+    </svg>
+  </model-viewer>
+
+  <script>
+    const viewer = document.querySelector('#visor-3d');
+    
+    // Elementos del DOM
+    const anclajeOrigen = viewer.querySelector('[slot="hotspot-origen"]');
+    const anclajeX = viewer.querySelector('[slot="hotspot-x"]');
+    const anclajeY = viewer.querySelector('[slot="hotspot-y"]');
+    const anclajeZ = viewer.querySelector('[slot="hotspot-z"]');
+    
+    const etiquetaX = document.querySelector('#etiqueta-x');
+    const etiquetaY = document.querySelector('#etiqueta-y');
+    const etiquetaZ = document.querySelector('#etiqueta-z');
+    
+    const lineaX = document.querySelector('#linea-x');
+    const lineaY = document.querySelector('#linea-y');
+    const lineaZ = document.querySelector('#linea-z');
+
+    // Cuando el modelo termine de cargar
+    viewer.addEventListener('load', () => {
+      // Obtenemos el tamaño real del modelo en metros
+      const medidas = viewer.getDimensions();
+      const centro = viewer.getBoundingBoxCenter();
+
+      // Convertimos a milímetros para mayor precisión 
+      etiquetaX.textContent = `X: ${(medidas.x * 1000).toFixed(1)} mm`;
+      etiquetaY.textContent = `Y: ${(medidas.y * 1000).toFixed(1)} mm`;
+      etiquetaZ.textContent = `Z: ${(medidas.z * 1000).toFixed(1)} mm`;
+
+      // Posicionamos los puntos de anclaje en las esquinas del modelo
+      // Origen (esquina inferior trasera izquierda)
+      const origX = centro.x - (medidas.x / 2);
+      const origY = centro.y - (medidas.y / 2);
+      const origZ = centro.z - (medidas.z / 2);
+
+      anclajeOrigen.dataset.position = `${origX} ${origY} ${origZ}`;
+      anclajeX.dataset.position = `${origX + medidas.x} ${origY} ${origZ}`;
+      anclajeY.dataset.position = `${origX} ${origY + medidas.y} ${origZ}`;
+      anclajeZ.dataset.position = `${origX} ${origY} ${origZ + medidas.z}`;
+    });
+
+    // Función para actualizar las líneas SVG mientras el modelo gira
+    const actualizarLineas = () => {
+      // Obtenemos las coordenadas 2D en pantalla de los puntos 3D
+      const rectOrigen = anclajeOrigen.getBoundingClientRect();
+      const rectX = anclajeX.getBoundingClientRect();
+      const rectY = anclajeY.getBoundingClientRect();
+      const rectZ = anclajeZ.getBoundingClientRect();
+      
+      const visorRect = viewer.getBoundingClientRect();
+
+      // Función auxiliar para sacar el centro del anclaje relativo al visor
+      const getCentro = (rect) => ({
+        x: rect.left - visorRect.left + (rect.width / 2),
+        y: rect.top - visorRect.top + (rect.height / 2)
+      });
+
+      const pOrigen = getCentro(rectOrigen);
+      const pX = getCentro(rectX);
+      const pY = getCentro(rectY);
+      const pZ = getCentro(rectZ);
+
+      // Dibujamos la línea X
+      lineaX.setAttribute('x1', pOrigen.x);
+      lineaX.setAttribute('y1', pOrigen.y);
+      lineaX.setAttribute('x2', pX.x);
+      lineaX.setAttribute('y2', pX.y);
+      etiquetaX.style.left = `${(pOrigen.x + pX.x) / 2}px`;
+      etiquetaX.style.top = `${(pOrigen.y + pX.y) / 2}px`;
+
+      // Dibujamos la línea Y
+      lineaY.setAttribute('x1', pOrigen.x);
+      lineaY.setAttribute('y1', pOrigen.y);
+      lineaY.setAttribute('x2', pY.x);
+      lineaY.setAttribute('y2', pY.y);
+      etiquetaY.style.left = `${(pOrigen.x + pY.x) / 2}px`;
+      etiquetaY.style.top = `${(pOrigen.y + pY.y) / 2}px`;
+
+      // Dibujamos la línea Z
+      lineaZ.setAttribute('x1', pOrigen.x);
+      lineaZ.setAttribute('y1', pOrigen.y);
+      lineaZ.setAttribute('x2', pZ.x);
+      lineaZ.setAttribute('y2', pZ.y);
+      etiquetaZ.style.left = `${(pOrigen.x + pZ.x) / 2}px`;
+      etiquetaZ.style.top = `${(pOrigen.y + pZ.y) / 2}px`;
+    };
+
+    // Actualizamos las líneas cada vez que se mueva la cámara
+    viewer.addEventListener('camera-change', actualizarLineas);
+    // Y forzamos una actualización inicial cuando los anclajes estén listos
+    window.addEventListener('resize', actualizarLineas);
+    setTimeout(actualizarLineas, 500); // Pequeño retraso para asegurar el renderizado
+  </script>
+</body>
+</html>
